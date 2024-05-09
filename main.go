@@ -6,9 +6,23 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
+
+var (
+	rightAnswers = 0
+	rowsAmount   = 0
+)
+
+func runTimer(d time.Duration) {
+	time.AfterFunc(d, func() {
+		getResult("Time's up!", rightAnswers, rowsAmount)
+		os.Exit(0)
+	})
+}
 
 func main() {
 	file, err := os.Open("test.csv")
@@ -26,29 +40,28 @@ func main() {
 		fmt.Println("Error reading the lines", err)
 	}
 
-	rowsAmount := len(records)
-	rightAnswers := 0
+	rowsAmount = len(records)
 
-	flag.Func("t", "Set timer for Quiz", func(s string) error {
-		duration, err := time.ParseDuration(s)
+	timerPointer := flag.Int("t", 10, "timer duration in seconds")
+	flag.Parse()
 
-		if err != nil {
-			fmt.Println("Error in timer flag, using default timer 5")
-			return err
-		}
-
-		time.NewTimer(duration)
-		return nil
-	})
+	fmt.Println("press any key")
+	readyInput := bufio.NewScanner(os.Stdin)
+	readyInput.Scan()
+	go runTimer(time.Duration(*timerPointer) * time.Second)
+	rand.Shuffle(len(records), func(i, j int) { records[i], records[j] = records[j], records[i] })
 
 	for _, record := range records {
 		fmt.Println("Solve the quiz: " + record[0])
 		input := bufio.NewScanner(os.Stdin)
 		input.Scan()
-		if input.Text() == record[1] {
+		if strings.TrimSpace(input.Text()) == record[1] {
 			rightAnswers++
 		}
 	}
-	fmt.Println("Quiz is over. You got ", rightAnswers, " out of ", rowsAmount, " questions right!")
+	getResult("You answered all questions", rightAnswers, rowsAmount)
+}
 
+func getResult(text string, rightAnswers int, rowsAmount int) {
+	fmt.Printf("%s. You got %d out of %d right!", text, rightAnswers, rowsAmount)
 }
